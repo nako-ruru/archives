@@ -20,6 +20,9 @@ import (
 	"github.com/klauspost/compress/zip"
 	"github.com/klauspost/compress/zstd"
 	"github.com/ulikunitz/xz"
+
+	"github.com/saintfish/chardet"
+	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
 func init() {
@@ -103,6 +106,34 @@ func (z Zip) Match(_ context.Context, filename string, stream io.Reader) (MatchR
 	}
 
 	return mr, nil
+}
+
+
+// AutoDetectEncoding tries to detect the text encoding used in a ZIP file
+// by examining file names in the central directory. This avoids full extraction.
+func (z *Zip) AutoDetectEncoding(ctx context.Context, sr *io.SectionReader) encoding.Encoding {
+	// Create a ZIP reader without fully extracting content
+	zr, err := zip.NewReader(sr, sr.Size())
+	if err != nil {
+		return nil
+	}
+
+	// Analyze filenames to detect encoding
+	for _, f := range zr.File {
+		if f.NonUTF8 { // From klauspost/compress/zip, true if UTF-8 flag is NOT set
+			detector := chardet.NewTextDetector()
+			result, _ := detector.DetectBest([]byte(f.FileHeader.Name))
+			if result != nil {
+				switch result.Charset {
+				case "GB-18030":
+					return simplifiedchinese.GB18030
+				}
+			}
+		}
+	}
+
+	// If all filenames are UTF-8, no need for special encoding
+	return nil
 }
 
 func (z Zip) Archive(ctx context.Context, output io.Writer, files []FileInfo) error {
@@ -206,6 +237,12 @@ func (z Zip) Extract(ctx context.Context, sourceArchive io.Reader, handleFile Fi
 		return fmt.Errorf("determining stream size: %w", err)
 	}
 
+	// Automatically detect encoding if none is specified
+	if z.TextEncoding == nil {
+		sr := io.NewSectionReader(sra, 0, size)
+		z.TextEncoding = z.AutoDetectEncoding(ctx, sr)
+	}
+	
 	zr, err := zip.NewReader(sra, size)
 	if err != nil {
 		return err
