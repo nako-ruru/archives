@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Xuanwo/go-locale"
 	"io"
 	"io/fs"
 	"log"
@@ -122,10 +123,24 @@ func (z *Zip) AutoDetectEncoding(ctx context.Context, sr *io.SectionReader) enco
 	for _, f := range zr.File {
 		if f.NonUTF8 { // From klauspost/compress/zip, true if UTF-8 flag is NOT set
 			detector := chardet.NewTextDetector()
-			result, _ := detector.DetectBest([]byte(f.FileHeader.Name))
-			if result != nil {
-				switch result.Charset {
+			result, _ := detector.DetectAll([]byte(f.FileHeader.Name))
+			if len(result) == 0 {
+				return nil
+			}
+			var charset string
+			if len(result) == 1 || result[0].Confidence >= 60 {
+				charset = result[0].Charset
+				switch charset {
 				case "GB-18030":
+					return simplifiedchinese.GB18030
+				}
+			} else {
+				tag, err := locale.Detect()
+				if err != nil {
+					return nil
+				}
+				switch tag.String() {
+				case "zh-CN":
 					return simplifiedchinese.GB18030
 				}
 			}
@@ -242,7 +257,7 @@ func (z Zip) Extract(ctx context.Context, sourceArchive io.Reader, handleFile Fi
 		sr := io.NewSectionReader(sra, 0, size)
 		z.TextEncoding = z.AutoDetectEncoding(ctx, sr)
 	}
-	
+
 	zr, err := zip.NewReader(sra, size)
 	if err != nil {
 		return err

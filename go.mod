@@ -14,10 +14,13 @@ require (
 
 require (
 	github.com/STARRY-S/zip v0.2.3
+	github.com/Xuanwo/go-locale v1.1.3
 	github.com/bodgit/sevenzip v1.6.4
+	github.com/mholt/archives v0.1.5
 	github.com/mikelolasagasti/xz v1.0.1
 	github.com/minio/minlz v1.1.1
 	github.com/pierrec/lz4/v4 v4.1.26
+	github.com/saintfish/chardet v0.0.0-20230101081208-5e3ef4b5456d
 	github.com/sorairolake/lzip-go v0.3.8
 	github.com/ulikunitz/xz v0.5.15
 	golang.org/x/text v0.37.0
@@ -30,4 +33,5 @@ require (
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/stangelandcl/ppmd v0.1.0 // indirect
 	go4.org v0.0.0-20260112195520-a5071408f32f // indirect
+	golang.org/x/sys v0.40.0 // indirect
 )
